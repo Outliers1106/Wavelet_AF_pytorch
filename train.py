@@ -9,8 +9,10 @@ LR = 0.01
 MOMENTUM = 0.9
 WEIGHT_DECAY = 0.0005
 GAMMA = 0.1
+STEP_SIZE = 5000
 MAX_ITER = 30000
 BATCH_SIZE = 100
+
 #train
 
 #net  struction
@@ -68,6 +70,11 @@ def restore_parameters():
     net.load_state_dict(torch.load('mynet_params.pkl'))
     return net
 
+def adjust_learning_rate(optimizer, iters = 0):
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = param_group['lr'] * GAMMA**(np.floor(iters/STEP_SIZE))
+
+
 if __name__ =='__main__':
     #load train data and train label
     f = h5py.File('ecg_traindata.h5','r')
@@ -95,6 +102,7 @@ if __name__ =='__main__':
     '''
     load test data and test label
     '''
+    '''
     f = h5py.File('ecg_testdata.h5','r')
     test_data = f['data']
     test_label = f['label']
@@ -106,17 +114,20 @@ if __name__ =='__main__':
     test_label = OnehotToScalar(test_label)
     test_data = Variable(test_data)
     #test_label = Variable(test_label)
-
+    '''
     '''
     train
     '''
     mynet = mynet()
     
-    opt_SGD = torch.optim.SGD(mynet.parameters(),lr=LR,momentum=MOMENTUM)
+    opt_SGD = torch.optim.SGD([
+        {'params':mynet.parameters()}
+        ],lr=LR,momentum=MOMENTUM)
     loss_func = torch.nn.CrossEntropyLoss()
     
     for epoch in range(MAX_ITER):
         print('Epoch:',epoch)
+        adjust_learning_rate(opt_SGD,epoch)
         for step,(b_x,b_y) in enumerate(loader):
             b_x = Variable(b_x)
             b_y = Variable(b_y)
