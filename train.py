@@ -11,7 +11,7 @@ WEIGHT_DECAY = 0.0005
 GAMMA = 0.1
 MAX_ITER = 30000
 BATCH_SIZE = 100
-
+#train
 
 #net  struction
 class mynet(nn.Module):
