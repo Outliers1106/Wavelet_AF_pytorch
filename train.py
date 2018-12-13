@@ -4,6 +4,9 @@ import h5py
 import torch.utils.data as Data
 from torch.autograd import Variable
 import numpy as np
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 LR = 0.01
 MOMENTUM = 0.9
@@ -14,7 +17,8 @@ MAX_ITER = 30000
 BATCH_SIZE = 100
 
 #train
-
+if torch.cuda.is_available():
+    net.cuda()
 #net  struction
 class mynet(nn.Module):
     def __init__(self):
