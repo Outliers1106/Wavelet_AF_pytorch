@@ -17,8 +17,7 @@ MAX_ITER = 30000
 BATCH_SIZE = 100
 
 #train
-if torch.cuda.is_available():
-    net.cuda()
+
 #net  struction
 class mynet(nn.Module):
     def __init__(self):
@@ -77,7 +76,33 @@ def restore_parameters():
 def adjust_learning_rate(optimizer, iters = 0):
     for param_group in optimizer.param_groups:
         param_group['lr'] = param_group['lr'] * GAMMA**(np.floor(iters/STEP_SIZE))
-
+        
+def test_accuracy(pred_y,test_label):
+    sumN=0,sumA=0,sumO=0,sumNoisy=0
+    sumN1=0,sumA1=0,sumO1=0,sumNoisy=0
+    for i in range(test_label.size):
+        if test_label[i] = 0:
+            sumN = sumN + 1
+        elif test_label[i] = 1:
+            sumA = sumA + 1
+        elif test_label[i] = 2:
+            sumO = sumO + 1
+        else:
+            sumNoisy = sumNoisy + 1
+    for i in range(test_label.size):
+        if test_label[i]==0 and pred_y[i]==0:
+            sumN1 = sumN1 + 1
+        elif test_label[i]==1 and pred_y[i]==1:
+            sumA1 = sumA1 + 1
+        elif test_label[i]==2 and pred_y[i]==2:
+            sumO1 = sumO1 + 1
+        elif test_label[i]==3 and pred_y[i]==3:
+            sumNoisy1 = sumNoisy1 + 1
+    accuracyN = sumN/sumN1
+    accuracyA = sumA/sumA1
+    accuracyO = sumO/sumO1
+    accuracyNoisy = sumNoisy/sumNoisy1
+    return accuracyN,accuracyA,accuracyO,accuracyNoisy
 
 if __name__ =='__main__':
     #load train data and train label
@@ -123,10 +148,11 @@ if __name__ =='__main__':
     train
     '''
     mynet = mynet()
-    
+    if torch.cuda.is_available():
+        mynet.cuda()
     opt_SGD = torch.optim.SGD([
         {'params':mynet.parameters()}
-        ],lr=LR,momentum=MOMENTUM)
+        ],lr=LR,momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
     loss_func = torch.nn.CrossEntropyLoss()
     
     for epoch in range(MAX_ITER):
@@ -141,11 +167,13 @@ if __name__ =='__main__':
             opt_SGD.zero_grad()
             loss.backward()
             opt_SGD.step()
-            if(step % 100 == 0):
+            if(step % 30 == 0):
                 test_output = mynet(test_data)
                 pred_y = torch.max(test_output, 1)[1].data.squeeze()
+                A,O,N,Noisy = test_accuracy(pred_y,test_label)
                 accuracy = float((pred_y == test_label).sum()) / float(test_label.size(0)) 
-                print('Epoch:',epoch,'|step:',step,'|loss:%.4f',loss.data[0],'test_accuracy:%.2f',accuracy)
-                torch.save(mynet.state_dict(), 'mynet_params.pkl')   #save parameters of net 
+                print('Epoch:',epoch,'|step:',step,'|loss:%.4f',loss.data[0],'test_accuracy:%.2f',accuracy,
+                      'A:%.2f',A,'N:%.2f',N,'O:%.2f',O,'Noisy:%.2f',Noisy)
+                torch.save(mynet.state_dict(), './model/mynet_'+Epoch+'_'+step+'params.pkl')   #save parameters of net 
     
     
