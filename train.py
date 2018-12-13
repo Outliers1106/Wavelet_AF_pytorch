@@ -4,6 +4,7 @@ import h5py
 import torch.utils.data as Data
 from torch.autograd import Variable
 import numpy as np
+import random
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -56,8 +57,8 @@ class mynet(nn.Module):
 
 
 def OnehotToScalar(label):#one-hot to biaoliang for cross Entropy 
-    label_new = torch.zeros(label.size(0))
-    for i in range(label.size(0)):
+    label_new = torch.zeros(label.shape[0])
+    for i in range(label.shape[0]):
         if(label[i][0]==1):
             label_new[i] = 0
         elif(label[i][1]==1):
@@ -77,19 +78,23 @@ def adjust_learning_rate(optimizer, iters = 0):
     for param_group in optimizer.param_groups:
         param_group['lr'] = param_group['lr'] * GAMMA**(np.floor(iters/STEP_SIZE))
         
+def get_random_test(test_data,test_label):
+    index = random.sample(range(0,test_label.shape[0]),100)
+    return test_data[index],test_label[index]
+
 def test_accuracy(pred_y,test_label):
-    sumN=0,sumA=0,sumO=0,sumNoisy=0
-    sumN1=0,sumA1=0,sumO1=0,sumNoisy=0
-    for i in range(test_label.size):
-        if test_label[i] = 0:
+    sumN,sumA,sumO,sumNoisy=[0,0,0,0]
+    sumN1,sumA1,sumO1,sumNoisy1=[0,0,0,0]
+    for i in range(test_label.size(0)):
+        if test_label[i] == 0:
             sumN = sumN + 1
-        elif test_label[i] = 1:
+        elif test_label[i] == 1:
             sumA = sumA + 1
-        elif test_label[i] = 2:
+        elif test_label[i] == 2:
             sumO = sumO + 1
         else:
             sumNoisy = sumNoisy + 1
-    for i in range(test_label.size):
+    for i in range(test_label.size(0)):
         if test_label[i]==0 and pred_y[i]==0:
             sumN1 = sumN1 + 1
         elif test_label[i]==1 and pred_y[i]==1:
@@ -98,10 +103,10 @@ def test_accuracy(pred_y,test_label):
             sumO1 = sumO1 + 1
         elif test_label[i]==3 and pred_y[i]==3:
             sumNoisy1 = sumNoisy1 + 1
-    accuracyN = sumN/sumN1
-    accuracyA = sumA/sumA1
-    accuracyO = sumO/sumO1
-    accuracyNoisy = sumNoisy/sumNoisy1
+    accuracyN = sumN1/(sumN+0.0001)#avoid zero division
+    accuracyA = sumA1/(sumA+0.0001)
+    accuracyO = sumO1/(sumO+0.0001)
+    accuracyNoisy = sumNoisy1/(sumNoisy+0.0001)
     return accuracyN,accuracyA,accuracyO,accuracyNoisy
 
 if __name__ =='__main__':
@@ -131,7 +136,7 @@ if __name__ =='__main__':
     '''
     load test data and test label
     '''
-    '''
+    
     f = h5py.File('ecg_testdata.h5','r')
     test_data = f['data']
     test_label = f['label']
@@ -141,9 +146,9 @@ if __name__ =='__main__':
     test_label = test_label.squeeze(3)#nx4x1x1 ->nx4x1
     test_label = test_label.squeeze(2)#nx4x1 ->nx4
     test_label = OnehotToScalar(test_label)
+    test_data = torch.from_numpy(test_data)
     test_data = Variable(test_data)
     #test_label = Variable(test_label)
-    '''
     '''
     train
     '''
@@ -168,12 +173,16 @@ if __name__ =='__main__':
             loss.backward()
             opt_SGD.step()
             if(step % 30 == 0):
-                test_output = mynet(test_data)
+                #generate 100 test samples to test accuracy 
+                test_data_100,test_label_100 = get_random_test(test_data,test_label)
+                
+                test_output = mynet(test_data_100)
                 pred_y = torch.max(test_output, 1)[1].data.squeeze()
-                A,O,N,Noisy = test_accuracy(pred_y,test_label)
-                accuracy = float((pred_y == test_label).sum()) / float(test_label.size(0)) 
-                print('Epoch:',epoch,'|step:',step,'|loss:%.4f',loss.data[0],'test_accuracy:%.2f',accuracy,
-                      'A:%.2f',A,'N:%.2f',N,'O:%.2f',O,'Noisy:%.2f',Noisy)
-                torch.save(mynet.state_dict(), './model/mynet_'+Epoch+'_'+step+'params.pkl')   #save parameters of net 
+                N,A,O,Noisy = test_accuracy(pred_y,test_label_100)
+            
+                accuracy = float((pred_y == test_label_100.long()).sum()) / float(test_label_100.long().size(0)) 
+                print('Epoch:',epoch,'|step:',step,'|loss:%.4f'% loss.data[0],'test_accuracy:%.2f'% accuracy,
+                      'A:%.2f'% A,'N:%.2f'% N,'O:%.2f'% O,'Noisy:%.2f'% Noisy)
+                torch.save(mynet.state_dict(), './model/mynet_'+str(epoch)+'_'+str(step)+'params.pkl')   #save parameters of net 
     
     
