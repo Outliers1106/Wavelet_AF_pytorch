@@ -125,7 +125,7 @@ if __name__ =='__main__':
     label = label.squeeze(2)#nx4x1 ->nx4
     
     label = OnehotToScalar(label)
-    
+    #pytorch updata: no data_tensor and target_tensor ,just input data and label,that is ok
     torch_dataset = Data.TensorDataset(data_tensor=data, target_tensor=label)
     loader = Data.DataLoader(
         dataset = torch_dataset,
